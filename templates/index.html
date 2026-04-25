@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bliss Attractor — Transcripts</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0d0d0f;
+      --surface:     #141417;
+      --surface2:    #1c1c21;
+      --surface3:    #242429;
+      --border:      #2a2a32;
+      --text:        #d4d4dc;
+      --text-dim:    #6b6b80;
+      --text-faint:  #3d3d4a;
+      --a-bg:        #162033;
+      --a-border:    #1e3a5f;
+      --a-label:     #5b9bd5;
+      --b-bg:        #0f261a;
+      --b-border:    #1a4a2e;
+      --b-label:     #4caf7d;
+      --accent:      #7c6fcd;
+      --green:       #4caf7d;
+      --yellow:      #c9a74d;
+      --red:         #c0504a;
+      --blue:        #5b9bd5;
+      --orange:      #d4844a;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────── */
+    header {
+      flex-shrink: 0;
+      height: 48px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+    }
+    header .logo {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    header .subtitle {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* ── Layout ──────────────────────────────────────────── */
+    .layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    .sidebar {
+      width: 280px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .run-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+    .run-list::-webkit-scrollbar { width: 4px; }
+    .run-list::-webkit-scrollbar-track { background: transparent; }
+    .run-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .run-item {
+      padding: 10px 16px;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+      transition: background 0.1s, border-color 0.1s;
+    }
+    .run-item:hover { background: var(--surface2); }
+    .run-item.active {
+      background: var(--surface2);
+      border-left-color: var(--accent);
+    }
+    .run-item-date {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .run-item-models {
+      font-size: 12px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 5px;
+    }
+    .run-item-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 3px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .badge-running   { background: #2a1f0f; color: var(--orange); border: 1px solid #4a3010; }
+    .badge-complete  { background: #0d2218; color: var(--green);  border: 1px solid #1a4028; }
+    .badge-stopped   { background: #1a1a2a; color: var(--blue);   border: 1px solid #2a2a4a; }
+    .badge-interrupt { background: #2a2008; color: var(--yellow); border: 1px solid #4a3a10; }
+    .badge-error     { background: #2a0d0d; color: var(--red);    border: 1px solid #4a1a1a; }
+    .badge-attractor { background: #1e1630; color: var(--accent); border: 1px solid #3a2a60; }
+
+    .run-turns {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .sidebar-empty {
+      padding: 20px 16px;
+      font-size: 13px;
+      color: var(--text-dim);
+      text-align: center;
+    }
+
+    /* ── Main transcript area ────────────────────────────── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    /* Run info header */
+    .run-header {
+      flex-shrink: 0;
+      padding: 12px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: none;
+    }
+    .run-header.visible { display: block; }
+    .run-header-top {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .run-header-id {
+      font-size: 11px;
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+      color: var(--text-dim);
+    }
+    .run-header-models {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .run-header-details {
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .run-header-details span { display: flex; align-items: center; gap: 4px; }
+    .run-header-details .lbl { color: var(--text-faint); }
+
+    /* Instigating prompt pill */
+    .instigating-pill {
+      display: inline-block;
+      font-size: 11px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-style: italic;
+      color: var(--text-dim);
+      max-width: 400px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    /* Transcript scroll area */
+    .transcript {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .transcript::-webkit-scrollbar { width: 6px; }
+    .transcript::-webkit-scrollbar-track { background: transparent; }
+    .transcript::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Empty / loading states */
+    .state-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 10px;
+      color: var(--text-faint);
+      font-size: 13px;
+    }
+    .state-placeholder .icon {
+      font-size: 36px;
+      opacity: 0.3;
+    }
+
+    /* ── Turn group ──────────────────────────────────────── */
+    .turn-group { margin-bottom: 8px; }
+
+    .turn-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0 14px;
+    }
+    .turn-divider-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .turn-divider-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      white-space: nowrap;
+    }
+
+    /* ── Message bubble ──────────────────────────────────── */
+    .message-row {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    .message-row.speaker-a { justify-content: flex-start; }
+    .message-row.speaker-b { justify-content: flex-end; }
+
+    .bubble-wrap {
+      max-width: 72%;
+      display: flex;
+      flex-direction: column;
+    }
+    .speaker-a .bubble-wrap { align-items: flex-start; }
+    .speaker-b .bubble-wrap { align-items: flex-end; }
+
+    .bubble-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .speaker-a .bubble-label { color: var(--a-label); }
+    .speaker-b .bubble-label { color: var(--b-label); }
+
+    .bubble-label .model-tag {
+      font-weight: 400;
+      font-size: 10px;
+      color: var(--text-dim);
+      font-family: "JetBrains Mono", "Cascadia Code", monospace;
+    }
+    .bubble-label .tokens {
+      font-weight: 400;
+      color: var(--text-faint);
+    }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .speaker-a .bubble {
+      background: var(--a-bg);
+      border: 1px solid var(--a-border);
+      border-top-left-radius: 2px;
+    }
+    .speaker-b .bubble {
+      background: var(--b-bg);
+      border: 1px solid var(--b-border);
+      border-top-right-radius: 2px;
+    }
+    .bubble.stop-token {
+      font-style: italic;
+      opacity: 0.6;
+      font-size: 12px;
+    }
+
+    /* ── Loading spinner ─────────────────────────────────── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">Bliss Attractor</span>
+  <span class="subtitle">Transcript Viewer</span>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">Experiment Runs</div>
+    <div class="run-list" id="runList">
+      <div class="sidebar-empty">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <div class="run-header" id="runHeader">
+      <div class="run-header-top">
+        <span class="run-header-models" id="headerModels"></span>
+        <span class="run-header-id" id="headerRunId"></span>
+      </div>
+      <div class="run-header-details">
+        <span><span class="lbl">Prompt</span> <span id="headerPromptVersion"></span></span>
+        <span><span class="lbl">Instigating</span> <span class="instigating-pill" id="headerInstigating"></span></span>
+        <span><span class="lbl">Status</span> <span id="headerStatus"></span></span>
+        <span id="headerAttractor"></span>
+      </div>
+    </div>
+
+    <div class="transcript" id="transcript">
+      <div class="state-placeholder">
+        <div class="icon">◈</div>
+        <div>Select a run to view its transcript</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const runList = document.getElementById('runList');
+  const transcript = document.getElementById('transcript');
+  const runHeader = document.getElementById('runHeader');
+
+  let activeRunId = null;
+  let activeRunCompleted = false;
+  let knownTurnCount = 0;
+  let lastTurnMessageCount = 0;  // message count in the most recently rendered turn group
+  let runsIntervalId = null;
+  let turnsIntervalId = null;
+
+  // ── Helpers ──────────────────────────────────────────────
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function statusBadge(run) {
+    const t = run.terminated_by;
+    if (!t && !run.completed_at) return `<span class="badge badge-running">Running</span>`;
+    if (t === 'hard_stop')       return `<span class="badge badge-complete">Complete</span>`;
+    if (t === 'manual')          return `<span class="badge badge-interrupt">Interrupted</span>`;
+    if (t && t.startsWith('model_')) return `<span class="badge badge-stopped">Model stop</span>`;
+    if (t === 'error')           return `<span class="badge badge-error">Error</span>`;
+    if (run.completed_at)        return `<span class="badge badge-complete">Complete</span>`;
+    return `<span class="badge badge-interrupt">Unknown</span>`;
+  }
+
+  function shortId(id) {
+    return id ? id.slice(0, 8) : '';
+  }
+
+  function shortModel(m) {
+    // trim provider prefixes like "claude-" for display
+    return m || '?';
+  }
+
+  // ── Load run list ─────────────────────────────────────────
+
+  async function loadRuns() {
+    try {
+      const res = await fetch('/api/runs');
+      const runs = await res.json();
+      renderRunList(runs);
+    } catch (e) {
+      runList.innerHTML = `<div class="sidebar-empty" style="color:var(--red)">Failed to load runs</div>`;
+    }
+  }
+
+  function renderRunList(runs) {
+    if (!runs.length) {
+      runList.innerHTML = `<div class="sidebar-empty">No runs found</div>`;
+      return;
+    }
+    runList.innerHTML = runs.map(run => {
+      const sameModel = run.model_a === run.model_b;
+      const modelsText = sameModel
+        ? `A = B = ${shortModel(run.model_a)}`
+        : `A: ${shortModel(run.model_a)}<br>B: ${shortModel(run.model_b)}`;
+      const turns = run.turn_count != null ? `${run.turn_count} turn${run.turn_count !== 1 ? 's' : ''}` : 'no turns';
+      const attractor = run.attractor_observed ? `<span class="badge badge-attractor">Attractor</span>` : '';
+
+      return `
+        <div class="run-item" data-id="${run.run_id}" onclick="selectRun('${run.run_id}')">
+          <div class="run-item-date">${fmtDate(run.created_at)}</div>
+          <div class="run-item-models">${modelsText}</div>
+          <div class="run-item-meta">
+            ${statusBadge(run)}
+            <span class="run-turns">${turns}</span>
+            ${attractor}
+          </div>
+        </div>`;
+    }).join('');
+
+    // Re-apply active highlight after re-render
+    if (activeRunId) {
+      const el = runList.querySelector(`[data-id="${activeRunId}"]`);
+      if (el) el.classList.add('active');
+    }
+  }
+
+  // ── Load + render transcript ──────────────────────────────
+
+  function isRunActive(run) {
+    return !run.terminated_by && !run.completed_at;
+  }
+
+  async function selectRun(runId) {
+    if (activeRunId === runId) return;
+
+    // Stop any existing turn-poll for the previous run
+    clearInterval(turnsIntervalId);
+    turnsIntervalId = null;
+
+    activeRunId = runId;
+    activeRunCompleted = false;
+    knownTurnCount = 0;
+    lastTurnMessageCount = 0;
+
+    // Highlight sidebar
+    document.querySelectorAll('.run-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.id === runId);
+    });
+
+    // Show loading
+    transcript.innerHTML = `
+      <div class="state-placeholder">
+        <div class="spinner"></div>
+        <div>Loading transcript…</div>
+      </div>`;
+    runHeader.classList.remove('visible');
+
+    try {
+      const res = await fetch(`/api/runs/${runId}`);
+      const data = await res.json();
+      renderHeader(data.run);
+      renderTranscript(data.run, data.turns);
+      knownTurnCount = data.turns.length;
+      lastTurnMessageCount = data.turns.length ? data.turns[data.turns.length - 1].messages.length : 0;
+      activeRunCompleted = !isRunActive(data.run);
+
+      // Start polling if still running
+      if (!activeRunCompleted) {
+        turnsIntervalId = setInterval(() => pollActiveTurns(runId), 5000);
+      }
+    } catch (e) {
+      transcript.innerHTML = `
+        <div class="state-placeholder" style="color:var(--red)">
+          Failed to load transcript
+        </div>`;
+    }
+  }
+
+  async function pollActiveTurns(runId) {
+    // Stop if the user switched to another run
+    if (activeRunId !== runId) {
+      clearInterval(turnsIntervalId);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/runs/${runId}`);
+      const data = await res.json();
+
+      // Update header status badge in case it changed
+      document.getElementById('headerStatus').innerHTML = statusBadge(data.run);
+
+      const totalTurns = data.turns.length;
+      const lastTurn = data.turns[totalTurns - 1];
+      const lastMsgCount = lastTurn ? lastTurn.messages.length : 0;
+
+      if (totalTurns > knownTurnCount) {
+        // One or more new turn groups have started
+        appendTurns(data.turns.slice(knownTurnCount));
+        knownTurnCount = totalTurns;
+        lastTurnMessageCount = lastMsgCount;
+      } else if (totalTurns === knownTurnCount && lastMsgCount > lastTurnMessageCount) {
+        // Same turn count but the last group gained messages (B replied)
+        updateLastTurn(lastTurn);
+        lastTurnMessageCount = lastMsgCount;
+      }
+
+      // Once the run finishes, stop polling
+      if (!isRunActive(data.run)) {
+        clearInterval(turnsIntervalId);
+        turnsIntervalId = null;
+        activeRunCompleted = true;
+      }
+    } catch (_) { /* silently skip on network error */ }
+  }
+
+  function appendTurns(turns) {
+    const atBottom = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 60;
+
+    for (const turn of turns) {
+      const div = document.createElement('div');
+      div.className = 'turn-group';
+      div.dataset.turn = turn.turn_number;
+      div.innerHTML = buildTurnHtml(turn);
+      transcript.appendChild(div);
+    }
+
+    if (atBottom) transcript.scrollTop = transcript.scrollHeight;
+  }
+
+  function updateLastTurn(turn) {
+    const atBottom = transcript.scrollHeight - transcript.scrollTop - transcript.clientHeight < 60;
+
+    const el = transcript.querySelector(`.turn-group[data-turn="${turn.turn_number}"]`);
+    if (el) el.innerHTML = buildTurnHtml(turn);
+
+    if (atBottom) transcript.scrollTop = transcript.scrollHeight;
+  }
+
+  function renderHeader(run) {
+    const sameModel = run.model_a === run.model_b;
+    document.getElementById('headerModels').textContent = sameModel
+      ? `${run.model_a} ↔ ${run.model_b}`
+      : `A: ${run.model_a}  ·  B: ${run.model_b}`;
+    document.getElementById('headerRunId').textContent = run.run_id;
+    document.getElementById('headerPromptVersion').textContent = run.system_prompt_version || '—';
+    document.getElementById('headerInstigating').textContent = run.instigating_prompt || '—';
+    document.getElementById('headerStatus').innerHTML = statusBadge(run);
+
+    const attrEl = document.getElementById('headerAttractor');
+    if (run.attractor_observed) {
+      attrEl.innerHTML = `<span class="badge badge-attractor">Attractor Observed</span>`;
+    } else {
+      attrEl.innerHTML = '';
+    }
+
+    runHeader.classList.add('visible');
+  }
+
+  function buildTurnHtml(turn) {
+    const msgs = turn.messages.map(msg => {
+      const speaker = msg.speaker.toUpperCase();
+      const isStop = msg.message === '/stop';
+      const tokenStr = msg.token_count != null ? `${msg.token_count} tok` : '';
+      return `
+        <div class="message-row speaker-${msg.speaker.toLowerCase()}">
+          <div class="bubble-wrap">
+            <div class="bubble-label">
+              <span>Model ${speaker}</span>
+              <span class="model-tag">${escHtml(msg.model_version || '')}</span>
+              ${tokenStr ? `<span class="tokens">${tokenStr}</span>` : ''}
+            </div>
+            <div class="bubble${isStop ? ' stop-token' : ''}">${isStop ? '[issued /stop]' : escHtml(msg.message)}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="turn-divider">
+        <div class="turn-divider-line"></div>
+        <div class="turn-divider-label">Turn ${turn.turn_number}</div>
+        <div class="turn-divider-line"></div>
+      </div>
+      ${msgs}`;
+  }
+
+  function renderTranscript(run, turns) {
+    if (!turns.length) {
+      transcript.innerHTML = `
+        <div class="state-placeholder">
+          <div class="icon">◌</div>
+          <div>No turns recorded for this run</div>
+        </div>`;
+      return;
+    }
+
+    // Inject instigating prompt as a preamble group
+    const preamble = `
+      <div class="turn-group">
+        <div class="turn-divider">
+          <div class="turn-divider-line"></div>
+          <div class="turn-divider-label">Instigating Prompt</div>
+          <div class="turn-divider-line"></div>
+        </div>
+        <div class="message-row speaker-a">
+          <div class="bubble-wrap">
+            <div class="bubble-label"><span>↳ to Model A</span></div>
+            <div class="bubble">${escHtml(run.instigating_prompt || '')}</div>
+          </div>
+        </div>
+      </div>`;
+
+    const turnGroups = turns.map(turn =>
+      `<div class="turn-group" data-turn="${turn.turn_number}">${buildTurnHtml(turn)}</div>`
+    ).join('');
+
+    transcript.innerHTML = preamble + turnGroups;
+    transcript.scrollTop = 0;
+  }
+
+  function escHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Init ──────────────────────────────────────────────────
+  loadRuns();
+  // Poll the run list every 15 s to catch newly started experiments
+  runsIntervalId = setInterval(loadRuns, 15000);
+</script>
+</body>
+</html>

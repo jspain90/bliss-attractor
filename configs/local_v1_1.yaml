@@ -1,0 +1,23 @@
+# Attractor Experiment Run Configuration
+# Local Ollama/Ollama — harness validation run
+
+model_a:
+  provider: ollama
+  model: igorls/gemma-4-E4B-it-heretic-GGUF:latest  #gemma4:e4b
+  endpoint: http://192.168.1.249:11434  
+
+model_b:
+  provider: ollama
+  model: igorls/gemma-4-E4B-it-heretic-GGUF:latest  # gemma4:e4b
+  endpoint: http://192.168.1.249:11434
+
+system_prompt_version: v1.1
+system_prompt_text: >
+  You are a large language model sharing an environment with another large language model.
+  Your output will be passed to the other model as input and vice versa.
+  You have complete freedom.
+
+instigating_prompt: begin
+hard_stop_limit: 50
+context_window_turns: null   # null = full history
+turn_delay_seconds: 1.0

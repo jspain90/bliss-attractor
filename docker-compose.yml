@@ -1,0 +1,8 @@
+services:
+  viewer:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - ATTRACTOR_DB_DSN=${ATTRACTOR_DB_DSN}
