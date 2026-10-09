@@ -208,7 +208,8 @@ def handle_interrupt(signum, frame):
     print("\n\n[Interrupt received — finishing current turn and closing run gracefully...]")
 
 
-def run_experiment(config_path: str):
+def run_experiment(config_path: str) -> str:
+    """Run a single experiment. Returns the terminated_by value."""
     global interrupted
 
     config = load_config(config_path)
@@ -231,8 +232,6 @@ def run_experiment(config_path: str):
     print(f"  Prompt:    {config['system_prompt_version']}")
     print(f"  Hard stop: {hard_stop} turns")
     print(f"{'='*60}\n")
-
-    signal.signal(signal.SIGINT, handle_interrupt)
 
     history = [{"speaker": PROMPT_SPEAKER, "content": {"message": instigating_prompt}}]
     turn_number = 0
@@ -309,6 +308,60 @@ def run_experiment(config_path: str):
     print(f"  Run ID:          {run_id}")
     print(f"{'='*60}\n")
 
+    return terminated_by
+
+
+def run_batch(config_path: str, total: int, max_retries: int = 2):
+    """Run `total` experiments sequentially, retrying failed runs up to max_retries times."""
+    global interrupted
+
+    completed = 0
+    skipped = 0
+
+    print(f"\n{'#'*60}")
+    print(f"  Batch start: {total} run(s) from {config_path}")
+    print(f"{'#'*60}")
+
+    for run_index in range(1, total + 1):
+        if interrupted:
+            print(f"\n[Batch interrupted — stopping after run {run_index - 1} of {total}]")
+            break
+
+        print(f"\n[Batch {run_index}/{total}]")
+
+        for attempt in range(1, max_retries + 2):  # 1 initial + max_retries retries
+            if interrupted:
+                break
+
+            if attempt > 1:
+                print(f"  [Retry {attempt - 1}/{max_retries}]")
+
+            terminated_by = run_experiment(config_path)
+
+            if interrupted:
+                break
+
+            if terminated_by == "error":
+                if attempt <= max_retries:
+                    print(f"  [Run failed — will retry ({attempt}/{max_retries})]")
+                else:
+                    print(f"  [Run failed after {max_retries} retr{'y' if max_retries == 1 else 'ies'} — skipping]")
+                    skipped += 1
+            else:
+                completed += 1
+                break
+
+        if interrupted:
+            break
+
+    total_attempted = run_index if interrupted else total
+    print(f"\n{'#'*60}")
+    print(f"  Batch complete.")
+    print(f"  Completed: {completed}  /  Skipped (all retries failed): {skipped}")
+    if interrupted:
+        print(f"  Aborted by interrupt after run {run_index - 1 if interrupted else total_attempted}.")
+    print(f"{'#'*60}\n")
+
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -317,5 +370,15 @@ def run_experiment(config_path: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AI-to-AI attractor state experiment harness")
     parser.add_argument("config", help="Path to YAML config file")
+    parser.add_argument(
+        "--runs", type=int, default=1, metavar="N",
+        help="Number of sequential runs to execute (default: 1)",
+    )
     args = parser.parse_args()
-    run_experiment(args.config)
+
+    signal.signal(signal.SIGINT, handle_interrupt)
+
+    if args.runs == 1:
+        run_experiment(args.config)
+    else:
+        run_batch(args.config, total=args.runs)
