@@ -69,11 +69,13 @@ class OllamaProvider(ModelProvider):
 
     def send(self, system_prompt: str, history: list[dict], message: str, receiving_speaker: str = "A") -> tuple[str, Optional[int]]:
         messages = build_messages(history, receiving_speaker, message)
+        # Ollama's /api/chat ignores a top-level "system" field; it must be a system-role message.
+        if system_prompt:
+            messages = [{"role": "system", "content": system_prompt}] + messages
 
         payload = {
             "model": self.model,
             "messages": messages,
-            "system": system_prompt,
             "stream": False,
         }
 
