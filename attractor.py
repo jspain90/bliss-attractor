@@ -52,10 +52,13 @@ def build_messages(history: list[dict], receiving_speaker: str, new_message: str
     """
     Build a message list from the perspective of the receiving model.
     That model's own prior turns are 'assistant'; the other model's turns are 'user'.
-    The incoming message is always 'user'.
+    The instigating prompt is 'user' and is shown only to Model A.
+    The incoming message is always 'user' and must not already be in history.
     """
     messages = []
     for turn in history:
+        if turn["speaker"] == PROMPT_SPEAKER and receiving_speaker != "A":
+            continue
         role = "assistant" if turn["speaker"] == receiving_speaker else "user"
         messages.append({"role": role, "content": turn["content"]["message"]})
     messages.append({"role": "user", "content": new_message})
@@ -195,6 +198,7 @@ def close_run(conn, run_id: str, terminated_by: str, error_detail: Optional[str]
 # ---------------------------------------------------------------------------
 
 STOP_TOKEN = "/stop"
+PROMPT_SPEAKER = "prompt"
 
 interrupted = False
 
@@ -230,7 +234,7 @@ def run_experiment(config_path: str):
 
     signal.signal(signal.SIGINT, handle_interrupt)
 
-    history = []
+    history = [{"speaker": PROMPT_SPEAKER, "content": {"message": instigating_prompt}}]
     turn_number = 0
     terminated_by = "hard_stop"
     error_detail = None
@@ -248,11 +252,13 @@ def run_experiment(config_path: str):
 
             print(f"[Turn {turn_number} — Model {current_speaker} ({model_label})]")
 
+            # history[-1] is current_message; build_messages appends it separately
+            prior = history[:-1]
             # Build windowed history if configured
             if context_window:
-                windowed = history[-context_window:]
+                windowed = prior[-context_window:]
             else:
-                windowed = history
+                windowed = prior
 
             try:
                 response, tokens = provider.send(system_prompt, windowed, current_message, receiving_speaker=current_speaker)
