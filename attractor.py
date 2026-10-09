@@ -243,7 +243,8 @@ def run_experiment(config_path: str) -> str:
     current_speaker = "A"
 
     try:
-        while turn_number < hard_stop and not interrupted:
+        # A turn is one A response plus one B response; B always finishes the turn A started
+        while (current_speaker == "B" or turn_number < hard_stop) and not interrupted:
             if current_speaker == "A":
                 turn_number += 1
             provider = provider_a if current_speaker == "A" else provider_b
@@ -285,7 +286,7 @@ def run_experiment(config_path: str) -> str:
             current_message = response
             current_speaker = "B" if current_speaker == "A" else "A"
 
-            if turn_number < hard_stop and not interrupted:
+            if (current_speaker == "B" or turn_number < hard_stop) and not interrupted:
                 time.sleep(delay)
 
     except Exception as e:
