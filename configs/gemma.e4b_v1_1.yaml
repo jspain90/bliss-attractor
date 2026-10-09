@@ -3,12 +3,12 @@
 
 model_a:
   provider: ollama
-  model: igorls/gemma-4-E4B-it-heretic-GGUF:latest  #gemma4:e4b
+  model: gemma4:e4b  #gemma4:e4b
   endpoint: http://192.168.1.249:11434  
 
 model_b:
   provider: ollama
-  model: igorls/gemma-4-E4B-it-heretic-GGUF:latest  # gemma4:e4b
+  model: gemma4:e4b # gemma4:e4b
   endpoint: http://192.168.1.249:11434
 
 system_prompt_version: v1.1
