@@ -100,36 +100,63 @@
     .run-list::-webkit-scrollbar-track { background: transparent; }
     .run-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-    .run-item {
-      padding: 10px 16px;
-      cursor: pointer;
-      border-left: 2px solid transparent;
-      transition: background 0.1s, border-color 0.1s;
+    /* ── Run groups ─────────────────────────────────────────── */
+    .run-group {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 14px 12px;
     }
-    .run-item:hover { background: var(--surface2); }
-    .run-item.active {
-      background: var(--surface2);
-      border-left-color: var(--accent);
+    .run-group:last-child { border-bottom: none; }
+
+    .run-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      gap: 8px;
     }
-    .run-item-date {
+    .run-group-label {
       font-size: 11px;
-      color: var(--text-dim);
-      margin-bottom: 4px;
-    }
-    .run-item-models {
-      font-size: 12px;
+      font-weight: 600;
       color: var(--text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-bottom: 5px;
+      min-width: 0;
     }
-    .run-item-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
+    .run-group-count {
+      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 600;
+      background: var(--surface3);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1px 7px;
+      letter-spacing: 0.03em;
     }
+
+    .run-group-select {
+      width: 100%;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6b80'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding-right: 24px;
+    }
+    .run-group-select:hover { border-color: var(--accent); }
+    .run-group-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(124,111,205,0.15); }
+    .run-group-select option { background: var(--surface2); }
+    .run-group-select.has-selection { color: var(--text); border-color: var(--accent); }
     .badge {
       display: inline-flex;
       align-items: center;
@@ -146,11 +173,6 @@
     .badge-interrupt { background: #2a2008; color: var(--yellow); border: 1px solid #4a3a10; }
     .badge-error     { background: #2a0d0d; color: var(--red);    border: 1px solid #4a1a1a; }
     .badge-attractor { background: #1e1630; color: var(--accent); border: 1px solid #3a2a60; }
-
-    .run-turns {
-      font-size: 11px;
-      color: var(--text-dim);
-    }
 
     .sidebar-empty {
       padding: 20px 16px;
@@ -444,36 +466,67 @@
     }
   }
 
+  function statusShort(run) {
+    const t = run.terminated_by;
+    if (!t && !run.completed_at) return 'live';
+    if (t === 'hard_stop')              return 'done';
+    if (t === 'manual')                 return 'int.';
+    if (t && t.startsWith('model_'))    return 'stopped';
+    if (t === 'error')                  return 'error';
+    if (run.completed_at)               return 'done';
+    return '?';
+  }
+
   function renderRunList(runs) {
     if (!runs.length) {
       runList.innerHTML = `<div class="sidebar-empty">No runs found</div>`;
       return;
     }
-    runList.innerHTML = runs.map(run => {
-      const sameModel = run.model_a === run.model_b;
-      const modelsText = sameModel
-        ? `A = B = ${shortModel(run.model_a)}`
-        : `A: ${shortModel(run.model_a)}<br>B: ${shortModel(run.model_b)}`;
-      const turns = run.turn_count != null ? `${run.turn_count} turn${run.turn_count !== 1 ? 's' : ''}` : 'no turns';
-      const attractor = run.attractor_observed ? `<span class="badge badge-attractor">Attractor</span>` : '';
 
-      return `
-        <div class="run-item" data-id="${run.run_id}" onclick="selectRun('${run.run_id}')">
-          <div class="run-item-date">${fmtDate(run.created_at)}</div>
-          <div class="run-item-models">${modelsText}</div>
-          <div class="run-item-meta">
-            ${statusBadge(run)}
-            <span class="run-turns">${turns}</span>
-            ${attractor}
-          </div>
-        </div>`;
-    }).join('');
-
-    // Re-apply active highlight after re-render
-    if (activeRunId) {
-      const el = runList.querySelector(`[data-id="${activeRunId}"]`);
-      if (el) el.classList.add('active');
+    // Group by model pair, preserving API order (most recent first)
+    const groups = new Map();
+    for (const run of runs) {
+      const key = `${run.model_a}|||${run.model_b}`;
+      if (!groups.has(key)) {
+        groups.set(key, { model_a: run.model_a, model_b: run.model_b, runs: [] });
+      }
+      groups.get(key).runs.push(run);
     }
+
+    let html = '';
+    for (const [key, group] of groups) {
+      const sameModel = group.model_a === group.model_b;
+      const groupLabel = sameModel
+        ? `A = B = ${shortModel(group.model_a)}`
+        : `A: ${shortModel(group.model_a)} · B: ${shortModel(group.model_b)}`;
+      const count = group.runs.length;
+      const activeInGroup = group.runs.some(r => r.run_id === activeRunId);
+
+      const options = group.runs.map(run => {
+        const turns = run.turn_count != null ? `${run.turn_count}t` : '0t';
+        const attractor = run.attractor_observed ? ' ◈' : '';
+        const label = `${fmtDate(run.created_at)}  ·  ${turns}  ·  ${statusShort(run)}${attractor}`;
+        const selected = run.run_id === activeRunId ? 'selected' : '';
+        return `<option value="${run.run_id}" ${selected}>${escHtml(label)}</option>`;
+      }).join('');
+
+      const placeholder = activeInGroup ? '' : `<option value="" disabled selected>— select run —</option>`;
+      const selectClass = activeInGroup ? 'run-group-select has-selection' : 'run-group-select';
+
+      html += `
+        <div class="run-group">
+          <div class="run-group-header">
+            <span class="run-group-label" title="${escHtml(groupLabel)}">${escHtml(groupLabel)}</span>
+            <span class="run-group-count">${count}</span>
+          </div>
+          <select class="${selectClass}" onchange="if(this.value) selectRun(this.value)">
+            ${placeholder}
+            ${options}
+          </select>
+        </div>`;
+    }
+
+    runList.innerHTML = html;
   }
 
   // ── Load + render transcript ──────────────────────────────
@@ -494,9 +547,13 @@
     knownTurnCount = 0;
     lastTurnMessageCount = 0;
 
-    // Highlight sidebar
-    document.querySelectorAll('.run-item').forEach(el => {
-      el.classList.toggle('active', el.dataset.id === runId);
+    // Reflect selection in dropdowns (in case selectRun is called programmatically)
+    document.querySelectorAll('.run-group-select').forEach(sel => {
+      const hasMatch = [...sel.options].some(o => o.value === runId);
+      if (hasMatch) {
+        sel.value = runId;
+        sel.classList.add('has-selection');
+      }
     });
 
     // Show loading
